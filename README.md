@@ -26,9 +26,9 @@ Application working represented on a figure:
 
 ## Possible actions
 
-Actions can be call with provided globvar.sh shell script in this format:
+Actions can be call with provided globvar shell script in this format:
 ```
-globvar.sh <action>
+globvar <action>
 ```
 
 Action can be:

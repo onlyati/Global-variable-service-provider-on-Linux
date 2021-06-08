@@ -77,7 +77,7 @@ In a work directory execute it:
 ```
 git init
 git remote add origin https://github.com/onlyati/Global-variable-service-provider-on-Linux.git
-git pull origin
+git pull origin master   
 ```
 
 If it has been pulled down, the publish with dotnet:
@@ -85,6 +85,7 @@ If it has been pulled down, the publish with dotnet:
 dotnet build
 dotnet publish
 ```
+Note: .NET 5.0 runtime environment is required to run this. Check Microsoft webpage about how to install it to your distro.
 
 Then you can copy the published members from the work directory into the running directory, for example /usr/share/GlobalVariableProvide/1.0
 

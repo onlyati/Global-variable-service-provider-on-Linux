@@ -13,8 +13,15 @@ namespace GlobalVariableProvider
     {
         static MemoryDb db;
 
+        static void MethodForStop(object sender, EventArgs eventArgs)
+        {
+            Environment.ExitCode = 0;
+        }
+
         static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.ProcessExit += MethodForStop;
+
             Console.WriteLine("Application is starting...");
 
             // Display some debug info about ThreadPool

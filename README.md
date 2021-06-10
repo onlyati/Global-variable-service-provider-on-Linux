@@ -43,6 +43,7 @@ Delete sub records:  deldir <key>
 Save record:         save <key>
 Load record:         load <key> <override: true/false>
 Load all records:    loadall <override: true/false
+Delete from file:    purge <key>
 ```
 
 ## Installation steps
@@ -105,11 +106,9 @@ Content of this file is here:
 Description=Global variable service provider
 
 [Service]
-WorkingDirectory=/usr/share/GlobalVariableProvider/1.0
+WorkingDirectory=/usr/share/GlobalVariableProvider
 User=root
 ExecStart=/usr/bin/dotnet GlobalVariableProvider.dll data/dbfile.json /tmp/globvar
-ExecStartPost=/usr/bin/sleep 10
-ExecStartPost=/usr/bin/globvar loadall true
 Restart=on-failure
 RestartSec=30
 

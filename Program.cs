@@ -42,6 +42,8 @@ namespace GlobalVariableProvider
                 return;
             }
 
+            db.LoadAll(true);
+
             // Check that FIFO is exist, if not create it
             string pipeName = $"{args[1]}-in";
             if(!File.Exists(pipeName))

@@ -52,7 +52,7 @@ Load all records:    loadall <override: true/false
 
 Create file called "globvar" (without double quotes) in /usr/bin directory. Script content can be seen:
 ```shell
-#!/usr/bin/sh
+#!/usr/bin/bash
 
 pipe_dir=/tmp
 

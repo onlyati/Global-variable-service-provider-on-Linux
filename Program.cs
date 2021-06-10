@@ -120,6 +120,7 @@ namespace GlobalVariableProvider
                 sw_out.WriteLine("Save record:         save <key>");
                 sw_out.WriteLine("Load record:         load <key> <override: true/false>");
                 sw_out.WriteLine("Load all records:    loadall <override: true/false");
+                sw_out.WriteLine("Purge from file:     purge <key>");
 
                 sw_out.Close();
                 fs_out.Close();
@@ -267,6 +268,24 @@ namespace GlobalVariableProvider
                             }
                         }
                         break;
+                    case "purge":
+                        if(words.Length < 3)
+                        {
+                            sw_out.WriteLine("ERROR: missing key");
+                        }
+                        else
+                        {
+                            var purge = db.Purge(words[2]);
+                            if(purge.Status)
+                            {
+                                sw_out.WriteLine($"Purge is done: {purge.Message}");
+                            }
+                            else
+                            {
+                                sw_out.WriteLine($"ERROR: Purge is failed: {purge.Message}");
+                            }
+                        }
+                        break;
                     default:
                         sw_out.WriteLine("Action word is missing. Possible actions:");
                         sw_out.WriteLine("Read record:         get <key>");
@@ -279,6 +298,7 @@ namespace GlobalVariableProvider
                         sw_out.WriteLine("Save record:         save <key>");
                         sw_out.WriteLine("Load record:         load <key> <override: true/false>");
                         sw_out.WriteLine("Load all records:    loadall <override: true/false");
+                        sw_out.WriteLine("Purge from file:     purge <key>");
                         break;
                 }
 

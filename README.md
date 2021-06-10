@@ -58,8 +58,15 @@ pipe_dir=/tmp
 
 mkfifo ${pipe_dir}/globvar-$$ -m666
 echo -n "${pipe_dir}/globvar-$$ $*" > ${pipe_dir}/globvar-in
+rc=$?
+if [[ ${rc} -ne 0 ]]
+then
+   echo "ERROR: failed data write"
+   exit 20
+fi
+
 respond=$(cat ${pipe_dir}/globvar-$$)
-rm ${pipe_dir}globvar-$$
+rm ${pipe_dir}/globvar-$$
 
 echo "${respond}"
 

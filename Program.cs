@@ -99,220 +99,232 @@ namespace GlobalVariableProvider
         static void HandleRequest(object lineObj)
         {
             string line = lineObj as string;
-            string[] words = line.Trim().Split();
 
-            // No message was passed, do nothing
-            if(words.Length == 0)
-                return;
+            string[] inputs = line.Split("/tmp/globvar-", StringSplitOptions.RemoveEmptyEntries);
 
-            if(words.Length < 2)
-            {                
-                if(!File.Exists(words[0]))
-                {
-                    Console.WriteLine($"Specified file does not exist: {words[0]}");
-                    return;
-                }
-
-                // Minimum 2 words needed: output pipe file and action word
-                // Return with an error message 
-                FileStream fs_out = new FileStream(words[0], FileMode.Open, FileAccess.Write);
-                StreamWriter sw_out = new StreamWriter(fs_out);
-
-                sw_out.WriteLine("Action word is missing. Possible actions:");
-                sw_out.WriteLine("Read record:         get <key>");
-                sw_out.WriteLine("List sub records:    getdir <key>");
-                sw_out.WriteLine("List all records:    getall");
-                sw_out.WriteLine("Create record:       set <key> <value>");
-                sw_out.WriteLine("Delete record:       set <key>");
-                sw_out.WriteLine("Delete all records:  delall");
-                sw_out.WriteLine("Delete sub records:  deldir <key>");
-                sw_out.WriteLine("Save record:         save <key>");
-                sw_out.WriteLine("Load record:         load <key> <override: true/false>");
-                sw_out.WriteLine("Load all records:    loadall <override: true/false");
-                sw_out.WriteLine("Purge from file:     purge <key>");
-
-                sw_out.Close();
-                fs_out.Close();
-            }
-            else
+            for (int i = 0; i < inputs.Length; i++)
             {
-                FileStream fs_out = new FileStream(words[0], FileMode.Open, FileAccess.Write);
-                StreamWriter sw_out = new StreamWriter(fs_out);
+                inputs[i] = $"/tmp/globvar-{inputs[i]}";
+                Console.WriteLine(inputs[i]);
+            }
 
-                List<string> output = new List<string>();
+            foreach(var item in inputs)
+            {
+                string[] words = item.Trim().Split();
 
-                // Request is OK for weight, check its syntax and do the proper action
-                switch(words[1])
-                {
-                    case "get":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key");
-                        }
-                        else
-                        {
-                            var item = db.Select(words[2]);
-                            if(item.Value != null)
-                                sw_out.WriteLine($"{item.Key} {item.Value}");
-                        }
-                        break;
-                    case "getdir":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key");
-                        }
-                        else
-                        {
-                            var list = db.ListDir(words[2]);
-                            foreach(var item in list)
-                            {
-                                sw_out.WriteLine($"{item.Key} {item.Value}");
-                            }
-                        }
-                        break;
-                    case "getall":
-                        {
-                            var list = db.ListAll();
-                            foreach(var item in list)
-                            {
-                                sw_out.WriteLine($"{item.Key} {item.Value}");
-                            }
-                        }
-                        break;
-                    case "set":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key");
-                        }
-                        else
-                        {
-                            if(words.Length == 3)
-                            {
-                                db.Add(words[2], null);
-                                sw_out.WriteLine($"Variable ({words[2]}) is deleted");
-                            }
-                            else
-                            {
-                                string value = "";
-                                for(int i = 3; i < words.Length; i++)
-                                {
-                                    value += $"{words[i]} ";
-                                }
-                                value = value.Trim();
-                                db.Add(words[2], value);
-                                sw_out.WriteLine($"Variable is added: {words[2]} -> {value}");
-                            }
-                        }
-                        break;
-                    case "delall":
-                        db.RemoveAll();
-                        sw_out.WriteLine($"Database is purged");
-                        break;
-                    case "deldir":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key");
-                        }
-                        else
-                        {
-                            db.RemoveDir(words[2]);
-                            sw_out.WriteLine($"Directory ({words[2]}) is purged");
-                        }
-                        break;
-                    case "save":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key");
-                        }
-                        else
-                        {
-                            var status = db.Save(words[2]);
-                            if(status.Status == true)
-                                sw_out.WriteLine($"Save is done: {status.Message}");
-                            else
-                                sw_out.WriteLine($"ERROR: Save is failed: {status.Message}");
-                        }
-                        break;
-                    case "load":
-                        if(words.Length < 4)
-                        {
-                            sw_out.WriteLine("ERROR: Missing key or override value");
-                        }
-                        else
-                        {
-                            bool? replace = words[3] == "true" ? true : words[3] == "false" ? false : null;
-                            if(replace == null)
-                            {
-                                sw_out.WriteLine("ERROR: override can be true or false");
-                            }
-                            else
-                            {
-                                var status = db.Load(replace ?? false, words[2]);
-                                if(status.Status == true)
-                                    sw_out.WriteLine($"Load is done: {status.Message}");
-                                else
-                                    sw_out.WriteLine($"ERROR: Load is failed: {status.Message}");
-                            }
-                        }
-                        break;
-                    case "loadall":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: missing override value");
-                        }
-                        else
-                        {
-                            bool? replace = words[2] == "true" ? true : words[2] == "falase" ? false : null;
-                            if(replace == null)
-                            {
-                                sw_out.WriteLine("ERROR: override can be true or false");
-                            }
-                            else
-                            {
-                                var status = db.LoadAll(replace ?? false);
-                                if(status.Status == true)
-                                    sw_out.WriteLine($"Load is done: {status.Message}");
-                                else
-                                    sw_out.WriteLine($"ERROR: Load is failed: {status.Message}");
-                            }
-                        }
-                        break;
-                    case "purge":
-                        if(words.Length < 3)
-                        {
-                            sw_out.WriteLine("ERROR: missing key");
-                        }
-                        else
-                        {
-                            var purge = db.Purge(words[2]);
-                            if(purge.Status)
-                            {
-                                sw_out.WriteLine($"Purge is done: {purge.Message}");
-                            }
-                            else
-                            {
-                                sw_out.WriteLine($"ERROR: Purge is failed: {purge.Message}");
-                            }
-                        }
-                        break;
-                    default:
-                        sw_out.WriteLine("Action word is missing. Possible actions:");
-                        sw_out.WriteLine("Read record:         get <key>");
-                        sw_out.WriteLine("List sub records:    getdir <key>");
-                        sw_out.WriteLine("List all records:    getall");
-                        sw_out.WriteLine("Create record:       set <key> <value>");
-                        sw_out.WriteLine("Delete record:       set <key>");
-                        sw_out.WriteLine("Delete all records:  delall");
-                        sw_out.WriteLine("Delete sub records:  deldir <key>");
-                        sw_out.WriteLine("Save record:         save <key>");
-                        sw_out.WriteLine("Load record:         load <key> <override: true/false>");
-                        sw_out.WriteLine("Load all records:    loadall <override: true/false");
-                        sw_out.WriteLine("Purge from file:     purge <key>");
-                        break;
+                // No message was passed, do nothing
+                if(words.Length == 0)
+                    return;
+
+                if(words.Length < 2)
+                {                
+                    if(!File.Exists(words[0]))
+                    {
+                        Console.WriteLine($"Specified file does not exist: {words[0]}");
+                        return;
+                    }
+
+                    // Minimum 2 words needed: output pipe file and action word
+                    // Return with an error message 
+                    FileStream fs_out = new FileStream(words[0], FileMode.Open, FileAccess.Write);
+                    StreamWriter sw_out = new StreamWriter(fs_out);
+
+                    sw_out.WriteLine("Action word is missing. Possible actions:");
+                    sw_out.WriteLine("Read record:         get <key>");
+                    sw_out.WriteLine("List sub records:    getdir <key>");
+                    sw_out.WriteLine("List all records:    getall");
+                    sw_out.WriteLine("Create record:       set <key> <value>");
+                    sw_out.WriteLine("Delete record:       set <key>");
+                    sw_out.WriteLine("Delete all records:  delall");
+                    sw_out.WriteLine("Delete sub records:  deldir <key>");
+                    sw_out.WriteLine("Save record:         save <key>");
+                    sw_out.WriteLine("Load record:         load <key> <override: true/false>");
+                    sw_out.WriteLine("Load all records:    loadall <override: true/false");
+                    sw_out.WriteLine("Purge from file:     purge <key>");
+
+                    sw_out.Close();
+                    fs_out.Close();
                 }
+                else
+                {
+                    FileStream fs_out = new FileStream(words[0], FileMode.Open, FileAccess.Write);
+                    StreamWriter sw_out = new StreamWriter(fs_out);
 
-                sw_out.Close();
-                fs_out.Close();
+                    List<string> output = new List<string>();
+
+                    // Request is OK for weight, check its syntax and do the proper action
+                    switch(words[1])
+                    {
+                        case "get":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key");
+                            }
+                            else
+                            {
+                                var item = db.Select(words[2]);
+                                if(item.Value != null)
+                                    sw_out.WriteLine($"{item.Key} {item.Value}");
+                            }
+                            break;
+                        case "getdir":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key");
+                            }
+                            else
+                            {
+                                var list = db.ListDir(words[2]);
+                                foreach(var item in list)
+                                {
+                                    sw_out.WriteLine($"{item.Key} {item.Value}");
+                                }
+                            }
+                            break;
+                        case "getall":
+                            {
+                                var list = db.ListAll();
+                                foreach(var item in list)
+                                {
+                                    sw_out.WriteLine($"{item.Key} {item.Value}");
+                                }
+                            }
+                            break;
+                        case "set":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key");
+                            }
+                            else
+                            {
+                                if(words.Length == 3)
+                                {
+                                    db.Add(words[2], null);
+                                    sw_out.WriteLine($"Variable ({words[2]}) is deleted");
+                                }
+                                else
+                                {
+                                    string value = "";
+                                    for(int i = 3; i < words.Length; i++)
+                                    {
+                                        value += $"{words[i]} ";
+                                    }
+                                    value = value.Trim();
+                                    db.Add(words[2], value);
+                                    sw_out.WriteLine($"Variable is added: {words[2]} -> {value}");
+                                }
+                            }
+                            break;
+                        case "delall":
+                            db.RemoveAll();
+                            sw_out.WriteLine($"Database is purged");
+                            break;
+                        case "deldir":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key");
+                            }
+                            else
+                            {
+                                db.RemoveDir(words[2]);
+                                sw_out.WriteLine($"Directory ({words[2]}) is purged");
+                            }
+                            break;
+                        case "save":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key");
+                            }
+                            else
+                            {
+                                var status = db.Save(words[2]);
+                                if(status.Status == true)
+                                    sw_out.WriteLine($"Save is done: {status.Message}");
+                                else
+                                    sw_out.WriteLine($"ERROR: Save is failed: {status.Message}");
+                            }
+                            break;
+                        case "load":
+                            if(words.Length < 4)
+                            {
+                                sw_out.WriteLine("ERROR: Missing key or override value");
+                            }
+                            else
+                            {
+                                bool? replace = words[3] == "true" ? true : words[3] == "false" ? false : null;
+                                if(replace == null)
+                                {
+                                    sw_out.WriteLine("ERROR: override can be true or false");
+                                }
+                                else
+                                {
+                                    var status = db.Load(replace ?? false, words[2]);
+                                    if(status.Status == true)
+                                        sw_out.WriteLine($"Load is done: {status.Message}");
+                                    else
+                                        sw_out.WriteLine($"ERROR: Load is failed: {status.Message}");
+                                }
+                            }
+                            break;
+                        case "loadall":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: missing override value");
+                            }
+                            else
+                            {
+                                bool? replace = words[2] == "true" ? true : words[2] == "falase" ? false : null;
+                                if(replace == null)
+                                {
+                                    sw_out.WriteLine("ERROR: override can be true or false");
+                                }
+                                else
+                                {
+                                    var status = db.LoadAll(replace ?? false);
+                                    if(status.Status == true)
+                                        sw_out.WriteLine($"Load is done: {status.Message}");
+                                    else
+                                        sw_out.WriteLine($"ERROR: Load is failed: {status.Message}");
+                                }
+                            }
+                            break;
+                        case "purge":
+                            if(words.Length < 3)
+                            {
+                                sw_out.WriteLine("ERROR: missing key");
+                            }
+                            else
+                            {
+                                var purge = db.Purge(words[2]);
+                                if(purge.Status)
+                                {
+                                    sw_out.WriteLine($"Purge is done: {purge.Message}");
+                                }
+                                else
+                                {
+                                    sw_out.WriteLine($"ERROR: Purge is failed: {purge.Message}");
+                                }
+                            }
+                            break;
+                        default:
+                            sw_out.WriteLine("Action word is missing. Possible actions:");
+                            sw_out.WriteLine("Read record:         get <key>");
+                            sw_out.WriteLine("List sub records:    getdir <key>");
+                            sw_out.WriteLine("List all records:    getall");
+                            sw_out.WriteLine("Create record:       set <key> <value>");
+                            sw_out.WriteLine("Delete record:       set <key>");
+                            sw_out.WriteLine("Delete all records:  delall");
+                            sw_out.WriteLine("Delete sub records:  deldir <key>");
+                            sw_out.WriteLine("Save record:         save <key>");
+                            sw_out.WriteLine("Load record:         load <key> <override: true/false>");
+                            sw_out.WriteLine("Load all records:    loadall <override: true/false");
+                            sw_out.WriteLine("Purge from file:     purge <key>");
+                            break;
+                    }
+
+                    sw_out.Close();
+                    fs_out.Close();
+                }
             }
         }
     }

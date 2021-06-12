@@ -108,9 +108,9 @@ namespace GlobalVariableProvider
                 Console.WriteLine(inputs[i]);
             }
 
-            foreach(var item in inputs)
+            foreach(var input in inputs)
             {
-                string[] words = item.Trim().Split();
+                string[] words = input.Trim().Split();
 
                 // No message was passed, do nothing
                 if(words.Length == 0)

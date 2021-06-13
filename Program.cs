@@ -40,8 +40,6 @@ namespace GlobalVariableProvider
         {
             AppDomain.CurrentDomain.ProcessExit += MethodForStop;
 
-            Console.WriteLine("Application is starting...");
-
             // Read config
             var configJson = File.ReadAllBytes("misc/config.json");
             var config = JsonSerializer.Deserialize<Config>(configJson);
@@ -122,14 +120,15 @@ namespace GlobalVariableProvider
 
                 string line = sr_in.ReadLine();
 
+                sr_in.Close();
+                fs_in.Close();
+
                 logger.LogDebug($"Receveid data: [{line}]");
 
                 if(!string.IsNullOrEmpty(line) && !string.IsNullOrWhiteSpace(line))
                 {
                     ThreadPool.QueueUserWorkItem(HandleRequest, line as object);
                 }
-                sr_in.Close();
-                fs_in.Close();
             }
         }
 

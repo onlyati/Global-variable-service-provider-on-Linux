@@ -48,37 +48,6 @@ Delete from file:    purge <key>
 
 ## Installation steps
 
-
-#### Shell script for interface
-
-Create file called "globvar" (without double quotes) in /usr/bin directory. Script content can be seen:
-```shell
-#!/usr/bin/bash
-
-pipe_dir=/tmp
-
-mkfifo ${pipe_dir}/globvar-$$ -m666
-echo -n "${pipe_dir}/globvar-$$ $*" > ${pipe_dir}/globvar-in
-rc=$?
-if [[ ${rc} -ne 0 ]]
-then
-   echo "ERROR: failed data write"
-   exit 20
-fi
-
-respond=$(cat ${pipe_dir}/globvar-$$)
-rm ${pipe_dir}/globvar-$$
-
-echo "${respond}"
-
-exit 0
-```
-
-Also grant execution for the script:
-```shell
-sudo chmod +x /usr/bin/globvar
-```
-
 #### Pull project from repo and build
 
 In a work directory execute it:
@@ -88,14 +57,35 @@ git remote add origin https://github.com/onlyati/Global-variable-service-provide
 git pull origin master   
 ```
 
-If it has been pulled down, the publish with dotnet:
+If it has been pulled down, the publish with dotnet (or using makefile):
 ```
 dotnet build
 dotnet publish
 ```
 Note: .NET 5.0 runtime environment is required to run this. Check Microsoft webpage about how to install it to your distro.
 
-Then you can copy the published members from the work directory into the running directory, for example /usr/share/GlobalVariableProvide/1.0
+### Using Makefile
+By using Makefile it is easier to deploy:
+```
+make build
+make publish
+sudo make deploy
+```
+
+Create directory and copy product to `/usr/share/GlobalVariableProvider/${VERSION}`.
+It also create a symlink for globvar.sh as globvar onto /bin directory.
+
+#### Shell script for interface
+
+Create file called "globvar" (without double quotes) in /usr/bin directory. It can be found: misc/globvar.sh
+
+By this command, request can be send to provider. Some sample:
+```
+globvar set something/test/val1 Here is the value
+globvar get something/test/val1
+```
+
+To get a summary about possible commands, just type `globvar` without any parameter.
 
 #### Create new systemd service for more uptime
 
@@ -106,9 +96,9 @@ Content of this file is here:
 Description=Global variable service provider
 
 [Service]
-WorkingDirectory=/usr/share/GlobalVariableProvider
+WorkingDirectory=/usr/share/GlobalVariableProvider/current
 User=root
-ExecStart=/usr/bin/dotnet GlobalVariableProvider.dll data/dbfile.json /tmp/globvar
+ExecStart=/usr/bin/dotnet GlobalVariableProvider.dll
 Restart=on-failure
 RestartSec=30
 
@@ -120,6 +110,12 @@ After systemd reload it is possible to start and stop the service:
 ```
 systemctl daemon-reload
 systemctl start GlobalVariableProvider
+systemctl stop GlobalVariableProvider
+systemctl restart GlobalVariableProvider
 ```
 
+Log also writes:
+```
+journalctl -u GlobalVariableProvider
+```
 

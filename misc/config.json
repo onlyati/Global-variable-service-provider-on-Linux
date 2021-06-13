@@ -1,0 +1,5 @@
+{
+    "DatabaseFile" : "misc/dbfile.json",
+    "MinLogLevel" : "Information",
+    "PipeName" : "globvar"
+}

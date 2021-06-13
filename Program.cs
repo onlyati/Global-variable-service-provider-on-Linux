@@ -1,17 +1,35 @@
 ﻿using System;
 using System.IO;
+using System.IO.Pipes;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MemoryDbLibrary;
 using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace GlobalVariableProvider
 {
+    public class Config
+    {
+
+        public string DatabaseFile { get; set; } = null;
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public LogLevel MinLogLevel { get; set; } = LogLevel.Information;
+
+        public string PipeName { get; set; } = null;
+    }
+
     class Program
     {
         static MemoryDb db;
+        static ILogger<Program> logger;
 
         static void MethodForStop(object sender, EventArgs eventArgs)
         {
@@ -24,35 +42,52 @@ namespace GlobalVariableProvider
 
             Console.WriteLine("Application is starting...");
 
-            // Display some debug info about ThreadPool
-            int minWorkerThreads, minCompletionPortThreads;
-            ThreadPool.GetMinThreads(out minWorkerThreads, out minCompletionPortThreads);
-            Console.WriteLine($"Number of minimum workers: {minWorkerThreads}/{minCompletionPortThreads}");
+            // Read config
+            var configJson = File.ReadAllBytes("misc/config.json");
+            var config = JsonSerializer.Deserialize<Config>(configJson);
 
-            int maxWorkerThreads, maxCompletionPortThreads;
-            ThreadPool.SetMaxThreads(4 * Environment.ProcessorCount, 8 * Environment.ProcessorCount);
-            ThreadPool.GetMaxThreads(out maxWorkerThreads, out maxCompletionPortThreads);
-            Console.WriteLine($"Number of maximum workers: {maxWorkerThreads}/{maxCompletionPortThreads}");
+            // Initialize logger
+            using ILoggerFactory loggerFactory =
+                LoggerFactory.Create(builder =>
+                    builder.AddSystemdConsole(options =>
+                    {
+                        options.IncludeScopes = true;
+                        options.TimestampFormat = "hh:mm:ss ";
+                    })
+                    .SetMinimumLevel(config.MinLogLevel));
+
+            logger = loggerFactory.CreateLogger<Program>();
+
+            logger.LogInformation("Config is read:");
+            logger.LogInformation($" => Minimum log level is {config.MinLogLevel}");
+            logger.LogInformation($" => Database file is {config.DatabaseFile}");
+            logger.LogInformation($" => Pipe name is {config.PipeName}");
 
             // Initialize MemoryDb
-            if(args.Length != 2)
+            if(config.DatabaseFile == null)
             {
-                Console.WriteLine("Error: Database file and/or pipe name is/are not specified in argument");
+                logger.LogError("Error: Database file and/or pipe name is/are not specified in argument");
                 return;
             }
 
-            Console.WriteLine($"Initialize in-memory db with file path: {args[0]}");
-            db = new MemoryDb(args[0]);
+            logger.LogInformation($"Initialize in-memory db with file path: {config.DatabaseFile}");
+            db = new MemoryDb(config.DatabaseFile);
             if(!db.IsPersistentStorageEnabled())
             {
-                Console.WriteLine("Error: database file cannot be located!");
+                logger.LogError("Error: database file cannot be located!");
                 return;
             }
+
+            logger.LogInformation(" => MemoryDb is initialized");
 
             db.LoadAll(true);
 
+            logger.LogInformation(" => Database file load is done");
+
             // Check that FIFO is exist, if not create it
-            string pipeName = $"{args[1]}-in";
+            logger.LogInformation("Named pipe initialization:");
+            string pipeName = $"{config.PipeName}-in";
+            logger.LogInformation($" => Input pipe name: {pipeName}");
             if(!File.Exists(pipeName))
             {
                 Process proc = new Process()
@@ -67,18 +102,18 @@ namespace GlobalVariableProvider
                 proc.WaitForExit();
                 if(proc.ExitCode != 0)
                 {
-                    Console.WriteLine($"Error: mkfifo command returned with RC={proc.ExitCode}");
+                    logger.LogError($" => Error: mkfifo command returned with RC={proc.ExitCode}");
                     return;
                 }
-                Console.WriteLine($"FIFO ({pipeName}) has been created");
+                logger.LogInformation($" => FIFO ({pipeName}) has been created");
             }
             else
             {
-                Console.WriteLine($"FIFO ({pipeName}) already exist, no action");
+                logger.LogInformation($" => FIFO ({pipeName}) already exist, no action");
             }
             
             // Application is ready to run
-            Console.WriteLine("Application is initialized\nWaiting for requests...");
+            logger.LogInformation("Application is initialized\nWaiting for requests!");
 
             while(true)
             {
@@ -86,6 +121,8 @@ namespace GlobalVariableProvider
                 StreamReader sr_in = new StreamReader(fs_in);
 
                 string line = sr_in.ReadLine();
+
+                logger.LogDebug($"Receveid data: [{line}]");
 
                 if(!string.IsNullOrEmpty(line) && !string.IsNullOrWhiteSpace(line))
                 {
@@ -99,18 +136,22 @@ namespace GlobalVariableProvider
         static void HandleRequest(object lineObj)
         {
             string line = lineObj as string;
+            logger.LogDebug($"Received string: [{line}]");
 
             string[] inputs = line.Split("/tmp/globvar-", StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < inputs.Length; i++)
             {
                 inputs[i] = $"/tmp/globvar-{inputs[i]}";
-                Console.WriteLine(inputs[i]);
             }
 
             foreach(var input in inputs)
             {
+                logger.LogDebug($"Splited input: [{input}]");
                 string[] words = input.Trim().Split();
+
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
 
                 // No message was passed, do nothing
                 if(words.Length == 0)
@@ -120,7 +161,7 @@ namespace GlobalVariableProvider
                 {                
                     if(!File.Exists(words[0]))
                     {
-                        Console.WriteLine($"Specified file does not exist: {words[0]}");
+                        logger.LogWarning($"Specified file does not exist: {words[0]}");
                         return;
                     }
 
@@ -324,6 +365,9 @@ namespace GlobalVariableProvider
 
                     sw_out.Close();
                     fs_out.Close();
+
+                    sw.Stop();
+                    logger.LogInformation($"Request ({input} was done during {sw.ElapsedMilliseconds}ms");
                 }
             }
         }

@@ -52,9 +52,7 @@ Delete from file:    purge <key>
 
 In a work directory execute it:
 ```
-git init
-git remote add origin https://github.com/onlyati/Global-variable-service-provider-on-Linux.git
-git pull origin master   
+git clone https://github.com/onlyati/Global-variable-service-provider-on-Linux.git
 ```
 
 If it has been pulled down, the publish with dotnet (or using makefile):
